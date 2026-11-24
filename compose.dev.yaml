@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: alineo_dev
+      POSTGRES_PASSWORD: alineo_dev_only
+      POSTGRES_DB: alineo_dev
+    ports:
+      - "127.0.0.1:55450:5432"
+    volumes:
+      - alineo_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alineo_dev -d alineo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+volumes:
+  alineo_postgres:

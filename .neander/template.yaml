@@ -1,0 +1,35 @@
+contract_version: 1
+id: alineo
+title: Alineo
+description: |
+  **Connect company priorities with everyday team progress.**
+
+  Alineo is an OKR workspace with company, team and individual objectives. Set quarterly or custom cycles, align goals, track numeric, percentage, currency and binary key results, and keep an effective-dated check-in history with notes and blockers.
+
+  Admin, Manager and Member roles control access alongside team and restricted-goal permissions. Explore fictional goals, delegated editors, reports, in-app notifications, CSV tools and archive/restore behavior. PostgreSQL migrations and generated demo credentials are included. Email delivery and scheduled reminder execution require your own operator configuration; no provider account or live workspace backup is included. Backup recovery is an explicit operator command, not an automatic startup task.
+category: Strategy & OKRs
+best_for: Teams aligning company priorities, individual goals and regular check-ins
+features:
+  - Company, team and individual objectives with alignment
+  - Quarterly and custom OKR cycles
+  - Four metric types and increasing or decreasing targets
+  - Effective-dated check-ins, corrections, notes and blockers
+  - Admin, Manager and Member roles with restricted-goal access
+  - Reports, CSV tools, in-app notifications and archive/restore
+included:
+  - Alineo goals and team workspace
+  - PostgreSQL migrations and session authentication
+  - Fictional staff, cycle, objectives and key-result history
+  - Operator backup/recovery tools and configuration guide
+thumbnail: .neander/thumbnail.png
+screenshots:
+  - .neander/screenshots/goals.png
+  - .neander/screenshots/people.png
+  - .neander/screenshots/activity.png
+commands:
+  install: [pnpm, install, --frozen-lockfile]
+  check: [pnpm, run, check]
+  test: [pnpm, run, test]
+  verify: [pnpm, run, test:template]
+seed:
+  command: [pnpm, run, db:seed]
