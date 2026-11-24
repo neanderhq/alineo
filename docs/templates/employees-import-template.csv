@@ -1,0 +1,7 @@
+email,name,role,manager_email,team_name,job_title,status
+workspace.admin@gmail.com,James Thomas,admin,,team 01,Administrator,active
+workspace.manager@gmail.com,Daniel Matthew,manager,workspace.admin@gmail.com,team 01,Workspace Manager,active
+workspace.member@gmail.com,Mark Steven,member,workspace.manager@gmail.com,team 01,Team Member,active
+abdibaye0902@gmail.com,Abdi Test,member,workspace.manager@gmail.com,team 01,Engineer,active
+qa-okr-20261119@example.invalid,QA scope invitee,member,workspace.manager@gmail.com,QA remaining scope — Team A,QA Tester,deactivated
+sourabh+alineo-qa-20261121@neander.ai,Client QA controlled inbox,member,workspace.manager@gmail.com,QA remaining scope — Team A,Client Reviewer,deactivated

@@ -1,0 +1,23 @@
+.git
+.neander-creation.json*
+.env
+.env.*
+!.env.example
+**/node_modules
+**/.next
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.tsbuildinfo
+
+.neander/blocks
+
+# Never include editor automation or generated private recovery artifacts.
+.vscode
+init
+.cache
+docs/recovery
+test-results
+playwright-report
+recovery-credentials*.json
