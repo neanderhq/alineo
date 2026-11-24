@@ -160,19 +160,21 @@ function ProgressTrendChart({ summaries, selectedId }: { summaries: CycleSummary
           )}
         </div>
       </div>
-      <table className="sr-only">
-        <caption>Average progress by cycle</caption>
-        <thead><tr><th scope="col">Cycle</th><th scope="col">Dates</th><th scope="col">Average progress</th></tr></thead>
-        <tbody>
-          {summaries.map((summary) => (
-            <tr key={summary.id}>
-              <td>{summary.name}</td>
-              <td>{summary.startDate} – {summary.endDate}</td>
-              <td>{formatPercent(summary.averageProgress)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>Average progress by cycle</caption>
+          <thead><tr><th scope="col">Cycle</th><th scope="col">Dates</th><th scope="col">Average progress</th></tr></thead>
+          <tbody>
+            {summaries.map((summary) => (
+              <tr key={summary.id}>
+                <td>{summary.name}</td>
+                <td>{summary.startDate} – {summary.endDate}</td>
+                <td>{formatPercent(summary.averageProgress)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
