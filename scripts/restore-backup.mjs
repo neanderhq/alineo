@@ -46,10 +46,9 @@ await client.connect();
 // Helper to generate a high-entropy temporary password
 function generateSecurePassword() {
   const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%^&*";
-  const bytes = crypto.randomBytes(16);
   let pass = "";
   for (let i = 0; i < 16; i++) {
-    pass += chars[bytes[i] % chars.length];
+    pass += chars[crypto.randomInt(chars.length)];
   }
   return pass + "Aa1!";
 }
