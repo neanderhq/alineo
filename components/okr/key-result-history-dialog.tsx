@@ -20,12 +20,14 @@ export function KeyResultHistoryDialog({
   canCorrect,
   onCorrect,
   onClose,
+  returnFocus,
 }: {
   keyResult: KeyResult;
   /** False when the viewer can't check in or the cycle isn't open. */
   canCorrect: boolean;
-  onCorrect: (entry: CheckInEntry) => void;
+  onCorrect: (entry: CheckInEntry, opener: HTMLButtonElement) => void;
   onClose: () => void;
+  returnFocus?: HTMLElement | null;
 }) {
   const [entries, setEntries] = useState<CheckInEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,13 @@ export function KeyResultHistoryDialog({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!returnFocus?.isConnected) return;
+          event.preventDefault();
+          returnFocus.focus();
+        }}
+        className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Check-in history</DialogTitle>
           <DialogDescription>
@@ -94,7 +102,7 @@ export function KeyResultHistoryDialog({
                     <p className="mt-1 whitespace-pre-wrap text-sm"><span className="font-medium">Blockers:</span> {entry.blockers}</p>
                   )}
                   {canCorrect && !entry.isSuperseded && (
-                    <Button variant="link" size="sm" className="mt-1 h-auto px-0" onClick={() => onCorrect(entry)}>
+                    <Button variant="link" size="sm" className="mt-1 h-auto px-0" onClick={(event) => onCorrect(entry, event.currentTarget)}>
                       <PencilLine aria-hidden="true" /> Correct this
                     </Button>
                   )}

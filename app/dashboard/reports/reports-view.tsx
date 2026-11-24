@@ -55,47 +55,47 @@ export function ReportsView() {
           <h1 className="text-3xl lg:text-4xl">Reports</h1>
           <p className="mt-1 text-sm text-muted-foreground">Progress, confidence and check-in trends, calculated only from goals you can see.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline"><a href={`/api/exports/okrs?${query}`}>Export OKRs</a></Button>
           <Button asChild variant="outline"><a href={`/api/exports/check-ins?${query}`}>Export check-ins</a></Button>
         </div>
       </header>
 
       <Card className="shadow-none">
-        <CardHeader><CardTitle>Filters</CardTitle><CardDescription>Filters run server-side before permission checks and pagination.</CardDescription></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Select value={view} onValueChange={setView}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+        <CardHeader><CardTitle>Filters</CardTitle><CardDescription>Choose the goals included in the report and exports.</CardDescription></CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Select value={view} onValueChange={setView}><SelectTrigger className="min-w-0 w-full" aria-label="Report scope"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="company">Company</SelectItem><SelectItem value="team">My teams</SelectItem><SelectItem value="my">My goals</SelectItem>
           </SelectContent></Select>
-          <Select value={cycleId} onValueChange={setCycleId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={cycleId} onValueChange={setCycleId}><SelectTrigger className="min-w-0 w-full" aria-label="Report cycle"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="all">All cycles</SelectItem>
             {workspace.cycles.map((cycle) => <SelectItem key={cycle.id} value={cycle.id}>{cycle.name}</SelectItem>)}
           </SelectContent></Select>
-          <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={status} onValueChange={setStatus}><SelectTrigger className="min-w-0 w-full" aria-label="Goal status"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="all">All statuses</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="draft">Draft</SelectItem><SelectItem value="completed">Completed</SelectItem><SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent></Select>
-          <Select value={confidence} onValueChange={setConfidence}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={confidence} onValueChange={setConfidence}><SelectTrigger className="min-w-0 w-full" aria-label="Goal confidence"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="all">All confidence</SelectItem><SelectItem value="on_track">On track</SelectItem><SelectItem value="at_risk">At risk</SelectItem><SelectItem value="off_track">Off track</SelectItem>
           </SelectContent></Select>
-          <Input placeholder="Search goals" value={q} onChange={(event) => setQ(event.target.value)} />
-          <Select value={overdueOnly} onValueChange={setOverdueOnly}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+          <Input aria-label="Search report goals" placeholder="Search goals" value={q} onChange={(event) => setQ(event.target.value)} />
+          <Select value={overdueOnly} onValueChange={setOverdueOnly}><SelectTrigger className="min-w-0 w-full" aria-label="Due dates"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="false">All due dates</SelectItem><SelectItem value="true">Overdue only</SelectItem>
           </SelectContent></Select>
-          <Select value={staleOnly} onValueChange={setStaleOnly}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={staleOnly} onValueChange={setStaleOnly}><SelectTrigger className="min-w-0 w-full" aria-label="Check-in recency"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="false">All check-ins</SelectItem><SelectItem value="true">Stale only</SelectItem>
           </SelectContent></Select>
-          <Select value={includeArchived} onValueChange={setIncludeArchived}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={includeArchived} onValueChange={setIncludeArchived}><SelectTrigger className="min-w-0 w-full" aria-label="Archived goals"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="false">Hide archived</SelectItem><SelectItem value="true">Include archived</SelectItem>
           </SelectContent></Select>
         </CardContent>
       </Card>
 
       {(["company", "team", "owner", "cycle"] as const).map((kind) => (
-        <Card key={kind} className="shadow-none">
+        <Card key={kind} className="min-w-0 shadow-none">
           <CardHeader><CardTitle className="capitalize">{kind} rollups</CardTitle></CardHeader>
           <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Goals</TableHead><TableHead>Key results</TableHead><TableHead>Average progress</TableHead></TableRow></TableHeader>
             <TableBody>{data.rollups[kind].map((row) => (
-              <TableRow key={`${kind}-${row.id}`}><TableCell>{row.name}</TableCell><TableCell>{row.goalCount}</TableCell><TableCell>{row.keyResultCount}</TableCell><TableCell>{row.averageProgress ?? "-"}%</TableCell></TableRow>
+              <TableRow key={`${kind}-${row.id}`}><TableCell>{row.name}</TableCell><TableCell>{row.goalCount}</TableCell><TableCell>{row.keyResultCount}</TableCell><TableCell>{row.averageProgress === null ? "—" : `${row.averageProgress}%`}</TableCell></TableRow>
             ))}</TableBody></Table></CardContent>
         </Card>
       ))}
@@ -118,8 +118,8 @@ export function ReportsView() {
       <Card className="shadow-none"><CardHeader><CardTitle>Weekly check-in trend</CardTitle><CardDescription>Average progress and check-in volume.</CardDescription></CardHeader>
         <CardContent className="space-y-2 text-sm">
           {data.checkInTrend.map((week) => (
-            <div key={week.weekOf} className="flex items-center gap-2"><Badge variant="secondary">{week.weekOf}</Badge>
-              <div className="h-2 rounded bg-primary" style={{ width: `${Math.max(2, Math.min(100, week.averageProgress))}%` }} />
+            <div key={week.weekOf} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"><Badge variant="secondary">{week.weekOf}</Badge>
+              <div className="h-2 rounded bg-muted" aria-hidden="true"><div className="h-full rounded bg-primary" style={{ width: `${week.averageProgress}%` }} /></div>
               <span>{week.averageProgress}% · {week.checkInCount} entries</span></div>
           ))}
           {!data.checkInTrend.length && <p className="text-muted-foreground">No check-ins in view.</p>}
@@ -128,17 +128,17 @@ export function ReportsView() {
 
       <Card className="shadow-none"><CardHeader><CardTitle>Cycle history and comparisons</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
         {data.cycleHistory.map((cycle) => (
-          <div key={cycle.id}><p><strong>{cycle.name}</strong> · {cycle.objectiveCount} goals · {cycle.averageProgress ?? "-"}%</p>
+          <div key={cycle.id}><p className="[overflow-wrap:anywhere]"><strong>{cycle.name}</strong> · {cycle.objectiveCount} goals · {cycle.averageProgress === null ? "—" : `${cycle.averageProgress}%`}</p>
           {cycle.finalReflection && <p className="text-muted-foreground">{cycle.finalReflection}</p>}</div>
         ))}
         <div className="flex flex-wrap gap-2">
-          {data.periodComparisons.map((comparison) => <Badge key={`${comparison.baseCycleName}-${comparison.targetCycleName}`} variant="outline">
+          {data.periodComparisons.map((comparison) => <Badge key={`${comparison.baseCycleName}-${comparison.targetCycleName}`} variant="outline" className="max-w-full min-w-0 whitespace-normal [overflow-wrap:anywhere]">
             {comparison.baseCycleName} → {comparison.targetCycleName}: {comparison.progressDelta === null ? "n/a" : comparison.progressDelta}%
           </Badge>)}
         </div>
       </CardContent></Card>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Page {data.pagination.page} of {data.pagination.totalPages} · {data.pagination.totalGoals} goals</p>
         <div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
           <Button variant="outline" disabled={!data.pagination.hasNextPage} onClick={() => setPage((value) => value + 1)}>Next</Button></div>

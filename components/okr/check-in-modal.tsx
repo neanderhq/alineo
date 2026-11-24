@@ -39,6 +39,7 @@ export function CheckInModal({
   cycle,
   correcting,
   onClose,
+  returnFocus,
   onSaved,
   onConflict,
 }: {
@@ -47,6 +48,7 @@ export function CheckInModal({
   /** Ledger entry this check-in corrects; its values prefill the form. */
   correcting: CheckInEntry | null;
   onClose: () => void;
+  returnFocus?: HTMLElement | null;
   /** Reload data and announce success; the dialog closes afterwards. */
   onSaved: (message: string) => Promise<void> | void;
   /** Reload data after a 409 so the next attempt uses the latest version. */
@@ -99,7 +101,13 @@ export function CheckInModal({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md">
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!returnFocus?.isConnected) return;
+          event.preventDefault();
+          returnFocus.focus();
+        }}
+        className="max-h-[92dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{correcting ? "Correct check-in" : "Check in"}</DialogTitle>
           <DialogDescription>

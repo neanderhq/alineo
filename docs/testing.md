@@ -21,6 +21,8 @@ production build. Build and `/api/health` need no live credentials.
 `pnpm test:production` and `pnpm test:template` use the same real-image suite.
 It must exercise the seeded product, meaningful permissions/history behavior,
 persistence through restart/reseed and maintained recovery/session regressions.
+It also checks admin-only bulk OKR imports, preview invalidation, goal and check-in
+focus, and phone layouts with long cycle names.
 Recorded passing evidence describes what was actually run; these instructions do
 not establish a successful production deployment.
 
