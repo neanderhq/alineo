@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useWorkspace } from "@/components/okr/workspace-context";
+
+import { reportFilterDefaults, type ReportFilters } from "@/lib/report-filters";
+import { SavedReportViews } from "./saved-report-views";
 
 interface ReportData {
   cycle: { id: string; name: string; finalReflection: string } | null;
@@ -23,30 +26,52 @@ interface ReportData {
 
 export function ReportsView() {
   const { workspace } = useWorkspace();
-  const [data, setData] = useState<ReportData | null>(null);
-  const [view, setView] = useState("company");
-  const [status, setStatus] = useState("all");
-  const [confidence, setConfidence] = useState("all");
-  const [q, setQ] = useState("");
-  const [overdueOnly, setOverdueOnly] = useState("false");
-  const [staleOnly, setStaleOnly] = useState("false");
-  const [includeArchived, setIncludeArchived] = useState("false");
-  const [cycleId, setCycleId] = useState("all");
+  return workspace ? <WorkspaceReports key={workspace.company.id} cycles={workspace.cycles} /> : null;
+}
+
+function WorkspaceReports({ cycles }: { cycles: NonNullable<ReturnType<typeof useWorkspace>["workspace"]>["cycles"] }) {
+  const [loaded, setLoaded] = useState<{ query: string; report: ReportData } | null>(null);
+  const [loadError, setLoadError] = useState<{ query: string; message: string } | null>(null);
+  const [filters, setFilters] = useState(reportFilterDefaults);
+  const { view, status, confidence, q, overdueOnly, staleOnly, includeArchived, cycleId } = filters;
   const [page, setPage] = useState(1);
+  const availableCycles = cycles.filter(cycle => includeArchived === "true" || !cycle.archivedAt);
+  const periodAvailable = cycleId === "all" || availableCycles.some(cycle => cycle.id === cycleId);
+  const query = new URLSearchParams({
+    ...filters, status: status === "all" ? "" : status, confidence: confidence === "all" ? "" : confidence,
+    cycleId: cycleId === "all" ? "" : cycleId, report: "true", page: String(page), pageSize: "50",
+  }).toString();
 
-  const query = useMemo(() => new URLSearchParams({
-    view, status: status === "all" ? "" : status, confidence: confidence === "all" ? "" : confidence,
-    q, overdueOnly, staleOnly, includeArchived, cycleId: cycleId === "all" ? "" : cycleId,
-    page: String(page), pageSize: "50",
-  }), [view, status, confidence, q, overdueOnly, staleOnly, includeArchived, cycleId, page]);
+  function apply(next: ReportFilters) {
+    setPage(1);
+    setFilters(next);
+  }
 
-  const load = useCallback(async () => {
-    const response = await fetch(`/api/reports?${query}`, { cache: "no-store" });
-    if (response.ok) setData(await response.json());
-  }, [query]);
+  function change(key: keyof ReportFilters, value: string) {
+    apply({ ...filters, [key]: value });
+  }
 
-  useEffect(() => { void load(); }, [load]);
-  if (!workspace || !data) return null;
+  useEffect(() => {
+    if (!periodAvailable) return;
+    const controller = new AbortController();
+    void fetch(`/api/reports?${query}`, { cache: "no-store", signal: controller.signal }).then(async response => {
+      const value = await response.json();
+      if (controller.signal.aborted) return;
+      if (response.ok) {
+        setLoaded({ query, report: value });
+        setLoadError(null);
+      } else {
+        setLoadError({ query, message: value.error ?? "Could not load the report." });
+      }
+    }).catch(() => {
+      if (!controller.signal.aborted) setLoadError({ query, message: "Could not load the report. Try again." });
+    });
+    return () => controller.abort();
+  }, [query, periodAvailable]);
+
+  const error = !periodAvailable ? "This period is unavailable. Choose another report cycle." :
+    loadError?.query === query ? loadError.message : null;
+  const data = !error && loaded?.query === query ? loaded.report : null;
 
   return (
     <div className="space-y-6">
@@ -55,41 +80,47 @@ export function ReportsView() {
           <h1 className="text-3xl lg:text-4xl">Reports</h1>
           <p className="mt-1 text-sm text-muted-foreground">Progress, confidence and check-in trends, calculated only from goals you can see.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {data && <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline"><a href={`/api/exports/okrs?${query}`}>Export OKRs</a></Button>
           <Button asChild variant="outline"><a href={`/api/exports/check-ins?${query}`}>Export check-ins</a></Button>
-        </div>
+        </div>}
       </header>
+
+      <SavedReportViews filters={filters} onApply={apply} periodAvailable={periodAvailable && !error} />
 
       <Card className="shadow-none">
         <CardHeader><CardTitle>Filters</CardTitle><CardDescription>Choose the goals included in the report and exports.</CardDescription></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Select value={view} onValueChange={setView}><SelectTrigger className="min-w-0 w-full" aria-label="Report scope"><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={view} onValueChange={value => change("view", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Report scope"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="company">Company</SelectItem><SelectItem value="team">My teams</SelectItem><SelectItem value="my">My goals</SelectItem>
           </SelectContent></Select>
-          <Select value={cycleId} onValueChange={setCycleId}><SelectTrigger className="min-w-0 w-full" aria-label="Report cycle"><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={cycleId} onValueChange={value => change("cycleId", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Report cycle"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="all">All cycles</SelectItem>
-            {workspace.cycles.map((cycle) => <SelectItem key={cycle.id} value={cycle.id}>{cycle.name}</SelectItem>)}
+            {!periodAvailable && <SelectItem value={cycleId} disabled>Unavailable period</SelectItem>}
+            {availableCycles.map((cycle) => <SelectItem key={cycle.id} value={cycle.id}>{cycle.name}</SelectItem>)}
           </SelectContent></Select>
-          <Select value={status} onValueChange={setStatus}><SelectTrigger className="min-w-0 w-full" aria-label="Goal status"><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={status} onValueChange={value => change("status", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Goal status"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="all">All statuses</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="draft">Draft</SelectItem><SelectItem value="completed">Completed</SelectItem><SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent></Select>
-          <Select value={confidence} onValueChange={setConfidence}><SelectTrigger className="min-w-0 w-full" aria-label="Goal confidence"><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={confidence} onValueChange={value => change("confidence", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Goal confidence"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="all">All confidence</SelectItem><SelectItem value="on_track">On track</SelectItem><SelectItem value="at_risk">At risk</SelectItem><SelectItem value="off_track">Off track</SelectItem>
           </SelectContent></Select>
-          <Input aria-label="Search report goals" placeholder="Search goals" value={q} onChange={(event) => setQ(event.target.value)} />
-          <Select value={overdueOnly} onValueChange={setOverdueOnly}><SelectTrigger className="min-w-0 w-full" aria-label="Due dates"><SelectValue /></SelectTrigger><SelectContent>
+          <Input aria-label="Search report goals" placeholder="Search goals" value={q} onChange={(event) => change("q", event.target.value)} />
+          <Select value={overdueOnly} onValueChange={value => change("overdueOnly", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Due dates"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="false">All due dates</SelectItem><SelectItem value="true">Overdue only</SelectItem>
           </SelectContent></Select>
-          <Select value={staleOnly} onValueChange={setStaleOnly}><SelectTrigger className="min-w-0 w-full" aria-label="Check-in recency"><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={staleOnly} onValueChange={value => change("staleOnly", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Check-in recency"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="false">All check-ins</SelectItem><SelectItem value="true">Stale only</SelectItem>
           </SelectContent></Select>
-          <Select value={includeArchived} onValueChange={setIncludeArchived}><SelectTrigger className="min-w-0 w-full" aria-label="Archived goals"><SelectValue /></SelectTrigger><SelectContent>
+          <Select value={includeArchived} onValueChange={value => change("includeArchived", value)}><SelectTrigger className="min-w-0 w-full" aria-label="Archived goals"><SelectValue /></SelectTrigger><SelectContent>
             <SelectItem value="false">Hide archived</SelectItem><SelectItem value="true">Include archived</SelectItem>
           </SelectContent></Select>
         </CardContent>
       </Card>
 
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {!data && !error && <p role="status" className="text-sm text-muted-foreground">Loading report…</p>}
+      {data && <>
       {(["company", "team", "owner", "cycle"] as const).map((kind) => (
         <Card key={kind} className="min-w-0 shadow-none">
           <CardHeader><CardTitle className="capitalize">{kind} rollups</CardTitle></CardHeader>
@@ -143,6 +174,7 @@ export function ReportsView() {
         <div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
           <Button variant="outline" disabled={!data.pagination.hasNextPage} onClick={() => setPage((value) => value + 1)}>Next</Button></div>
       </div>
+      </>}
     </div>
   );
 }

@@ -29,6 +29,13 @@
       "when": 1795602417356,
       "tag": "0003_manager_check_in_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795602502045,
+      "tag": "0004_private_report_views",
+      "breakpoints": true
     }
   ]
 }

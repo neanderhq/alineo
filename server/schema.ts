@@ -16,6 +16,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { ReportFilters } from "../lib/report-filters";
 import * as authSchema from "./auth-schema";
 
 export * from "./auth-schema";
@@ -239,6 +240,16 @@ export const checkInReviews = pgTable("check_in_reviews", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("check_in_reviews_scope_idx").on(table.companyId, table.reviewerId, table.checkInId),
+]);
+
+export const reportViews = pgTable("report_views", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 80 }).notNull(),
+  filters: jsonb("filters").$type<ReportFilters>().notNull(),
+}, (table) => [
+  uniqueIndex("report_views_owner_name_idx").on(table.companyId, table.ownerId, sql`lower(${table.name})`),
 ]);
 
 export const goalComments = pgTable("goal_comments", {
