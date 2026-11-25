@@ -65,6 +65,23 @@ function sameIds(left: string[], right: string[]) {
   return left.length === right.length && left.every((id, index) => id === right[index]);
 }
 
+function rebaseAccessEdits(
+  original: GoalDraft["access"],
+  edited: GoalDraft["access"],
+  latest: GoalDraft["access"],
+): GoalDraft["access"] {
+  const originalPermissions = new Map(original.map(({ userId, permission }) => [userId, permission]));
+  const editedPermissions = new Map(edited.map(({ userId, permission }) => [userId, permission]));
+  const merged = new Map(latest.map(({ userId, permission }) => [userId, permission]));
+  for (const userId of new Set([...originalPermissions.keys(), ...editedPermissions.keys()])) {
+    const permission = editedPermissions.get(userId);
+    if (permission === originalPermissions.get(userId)) continue;
+    if (permission) merged.set(userId, permission);
+    else merged.delete(userId);
+  }
+  return Array.from(merged, ([userId, permission]) => ({ userId, permission }));
+}
+
 function nullable(value: string) {
   return value === NONE || value === "" || value === HIDDEN_PARENT ? null : value;
 }
@@ -127,18 +144,23 @@ export function GoalSheet({
   const { workspace, canManage, loadWorkspace, setFeedback } = useWorkspace();
   const userId = workspace?.user.id ?? "";
   const isCreate = objective === null;
-  const [draft, setDraft] = useState<GoalDraft>(() => objective ? draftFrom(objective) : {
-    title: "",
-    description: "",
-    level: canManage ? "team" : "individual",
-    teamId: workspace?.user.teamIds[0] ?? NONE,
-    ownerId: userId || NONE,
-    dueDate: cycle.endDate,
-    status: "active",
-    parentObjectiveId: NONE,
-    visibility: "company",
-    access: [],
-  });
+  const [base, setBase] = useState<{ version: number | undefined; values: GoalDraft }>(() => ({
+    version: objective?.version,
+    values: objective ? draftFrom(objective) : {
+      title: "",
+      description: "",
+      level: canManage ? "team" : "individual",
+      teamId: workspace?.user.teamIds[0] ?? NONE,
+      ownerId: userId || NONE,
+      dueDate: cycle.endDate,
+      status: "active",
+      parentObjectiveId: NONE,
+      visibility: "company",
+      access: [],
+    },
+  }));
+  const [edits, setEdits] = useState<Partial<GoalDraft>>({});
+  const draft = { ...base.values, ...edits };
   const [openSections, setOpenSections] = useState({ basics: true, privacy: isCreate, keyResults: false, comments: false });
   const [error, setError] = useState<string | null>(null);
   const [invalidField, setInvalidField] = useState<"title" | "team" | null>(null);
@@ -149,13 +171,16 @@ export function GoalSheet({
   const [newAccessUserId, setNewAccessUserId] = useState("");
   const [newAccessPermission, setNewAccessPermission] = useState<Permission>("viewer");
 
-  // After a 409 the workspace reloads; show the latest saved values so the user can re-apply their change.
   useEffect(() => {
-    if (reloadAfterConflict && objective) {
-      setDraft(draftFrom(objective));
-      setReloadAfterConflict(false);
-    }
-  }, [objective?.version]);
+    if (!reloadAfterConflict || !objective || objective.version === base.version) return;
+    const latest = draftFrom(objective);
+    setEdits((previous) => previous.access
+      ? { ...previous, access: rebaseAccessEdits(base.values.access, previous.access, latest.access) }
+      : previous);
+    setBase({ version: objective.version, values: latest });
+    setReloadAfterConflict(false);
+    setError("Someone else changed this goal. Your edits are still here. Review the updated fields and save again.");
+  }, [base, objective, reloadAfterConflict]);
 
   useEffect(() => {
     if (!openSections.basics) return;
@@ -190,7 +215,11 @@ export function GoalSheet({
       setInvalidField(null);
       setError(null);
     }
-    setDraft((previous) => ({ ...previous, [key]: value }));
+    setEdits((previous) => {
+      const next = { ...previous, [key]: value };
+      if (value === base.values[key]) delete next[key];
+      return next;
+    });
   }
 
   function addAccess() {
@@ -217,18 +246,18 @@ export function GoalSheet({
     };
     if (!objective) return { cycleId: cycle.id, ...fields, ...(canEditPrivacy ? privacy : { ownerId: userId }) };
 
-    const body: Record<string, unknown> = { version: objective.version };
-    const before = draftFrom(objective);
-    if (fields.title !== objective.title) body.title = fields.title;
-    if (fields.description !== objective.description) body.description = fields.description;
-    if (fields.level !== objective.level) body.level = fields.level;
-    if (fields.teamId !== objective.teamId) body.teamId = fields.teamId;
-    if (fields.dueDate !== objective.dueDate) body.dueDate = fields.dueDate;
-    if (fields.status !== objective.status) body.status = fields.status;
-    if (fields.parentObjectiveId !== objective.parentObjectiveId) body.parentObjectiveId = fields.parentObjectiveId;
+    const body: Record<string, unknown> = { version: base.version };
+    const before = base.values;
+    if (fields.title !== before.title) body.title = fields.title;
+    if (fields.description !== before.description) body.description = fields.description;
+    if (fields.level !== before.level) body.level = fields.level;
+    if (fields.teamId !== nullable(before.teamId)) body.teamId = fields.teamId;
+    if (fields.dueDate !== (before.dueDate || null)) body.dueDate = fields.dueDate;
+    if (fields.status !== before.status) body.status = fields.status;
+    if (fields.parentObjectiveId !== nullable(before.parentObjectiveId)) body.parentObjectiveId = fields.parentObjectiveId;
     if (canEditPrivacy) {
-      if (privacy.ownerId !== objective.ownerId) body.ownerId = privacy.ownerId;
-      if (privacy.visibility !== objective.visibility) body.visibility = privacy.visibility;
+      if (privacy.ownerId !== nullable(before.ownerId)) body.ownerId = privacy.ownerId;
+      if (privacy.visibility !== before.visibility) body.visibility = privacy.visibility;
       if (!sameIds(privacy.viewerIds, idsWith(before.access, "viewer")) || !sameIds(privacy.editorIds, idsWith(before.access, "editor"))) {
         body.viewerIds = privacy.viewerIds;
         body.editorIds = privacy.editorIds;
@@ -266,10 +295,12 @@ export function GoalSheet({
         ? await apiRequest(`/api/objectives/${objective.id}`, "PATCH", body)
         : await apiRequest("/api/objectives", "POST", body);
       if (!result.ok) {
-        setError(describeSaveError(result, "goal"));
         if (result.status === 409) {
+          setError("Someone else changed this goal. Your edits are still here. Try again to load the latest version.");
           setReloadAfterConflict(true);
-          await loadWorkspace();
+          await loadWorkspace().catch(() => undefined);
+        } else {
+          setError(describeSaveError(result, "goal"));
         }
         return;
       }
