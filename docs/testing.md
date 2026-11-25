@@ -22,7 +22,10 @@ production build. Build and `/api/health` need no live credentials.
 It must exercise the seeded product, meaningful permissions/history behavior,
 persistence through restart/reseed and maintained recovery/session regressions.
 It also checks admin-only bulk OKR imports, preview invalidation, goal and check-in
-focus, and phone layouts with long cycle names.
+focus, and phone layouts with long cycle names. The selected OKR workflows
+exercise direct-report requests and review state, private report views and
+exports, and atomic batch confirmation with stale versions and a lost response.
+They use desktop and 375px Chromium viewports with keyboard interactions.
 Recorded passing evidence describes what was actually run; these instructions do
 not establish a successful production deployment.
 

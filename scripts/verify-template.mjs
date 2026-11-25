@@ -11,6 +11,7 @@ import { chromium, request } from 'playwright';
 import pg from 'pg';
 import { verifyRecovery } from './verify-recovery.mjs';
 import { verifyCoreQuality } from './verify-core-quality.mjs';
+import { verifyWorkflows } from './verify-workflows.mjs';
 const exec=promisify(execFile);
 const COMPANY='a11e0000-0000-4000-8000-000000000001', ROOT='c11e0000-0000-4000-8000-000000000001', PRIVATE='c11e0000-0000-4000-8000-000000000003', KR='d11e0000-0000-4000-8000-000000000004';
 async function run(command,args,options={}) {
@@ -63,11 +64,13 @@ async function main(){
     const mobileLayout=await page.evaluate(()=>({width:window.innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].map(e=>({tag:e.tagName,classes:e.getAttribute('class'),right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width})).filter(e=>e.right>window.innerWidth+1).slice(-20)}));
     assert.ok(mobileLayout.scrollWidth<=mobileLayout.width+1,'Mobile dashboard has no horizontal page overflow: '+JSON.stringify(mobileLayout));
     await verifyCoreQuality({ page, origin: origin.origin, admin, member, workspace: await json(await admin.get('/api/workspace')) });
-    await context.close();await browser.close();browser=undefined;
+
     const workspace=await json(await admin.get('/api/workspace')),goal=workspace.cycles.flatMap(c=>c.objectives).find(o=>o.id===ROOT),edited='Template edit '+randomUUID().slice(0,8);
     await json(await admin.patch('/api/objectives/'+ROOT,{data:{title:edited,version:goal.version}}));await run('pnpm',['db:seed']);await exec('docker',['restart',name],{timeout:60000});await ready(origin.origin);assert.equal((await json(await admin.get('/api/workspace'))).cycles.flatMap(c=>c.objectives).find(o=>o.id===ROOT).title,edited);
     await run(process.execPath,['--experimental-strip-types','--experimental-transform-types','--import','./scripts/register-loader.mjs','scripts/archive-restore.check.mts']);
     for(const script of ['test-goal-restore-live.mjs','test-req2-live.mjs','test-req3-status.mjs'])await run(process.execPath,['scripts/'+script,origin.origin]);
+    await verifyWorkflows({ browser, origin: origin.origin, admin, manager: roles.get('manager'), member, stranger, login, db, anonymous, inactive: roles.get('inactive') });
+    await context.close();await browser.close();browser=undefined;
     const backup=await json(await admin.get('/api/exports/backup'));assert.equal(backup.company.id,COMPANY);
     recoveryDatabase='alineo_recovery_'+randomUUID().replaceAll('-','');await db.query(`CREATE DATABASE "${recoveryDatabase}"`);const recoveryUrl=new URL(url);recoveryUrl.pathname='/'+recoveryDatabase;const recoveryOrigin=new URL(origin);recoveryOrigin.port=String(Number(origin.port||80)+1);
     await verifyRecovery({backup,directory,sourceRoot:root,databaseUrl:recoveryUrl.href,origin:recoveryOrigin.origin,request,start,run});

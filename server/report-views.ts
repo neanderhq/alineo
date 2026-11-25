@@ -70,8 +70,12 @@ export async function reportRequestFilters(context: RequestContext, request: Req
   const query = new URL(request.url).searchParams;
   const filters = parseGoalQueryFilters(query);
   const fromReports = query.get("report") === "true";
-  if (fromReports && !await isReportCycleAvailable(context.companyId, filters.cycleId ?? "all", Boolean(filters.includeArchived))) {
-    throw new InputError("This period is unavailable. Choose another report cycle.", 409);
+  if (fromReports) {
+    if (filters.cycleId === "all") filters.cycleId = undefined;
+    if (!await isReportCycleAvailable(context.companyId, filters.cycleId ?? "all", Boolean(filters.includeArchived))) {
+      throw new InputError("This period is unavailable. Choose another report cycle.", 409);
+    }
+    filters.omitArchivedCycles = !filters.includeArchived;
   }
   return { filters, fromReports };
 }
