@@ -22,6 +22,13 @@
       "when": 1794552818851,
       "tag": "0002_brainy_selene",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795602417356,
+      "tag": "0003_manager_check_in_reviews",
+      "breakpoints": true
     }
   ]
 }

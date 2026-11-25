@@ -232,6 +232,15 @@ export const krCheckIns = pgTable("kr_check_ins", {
   index("kr_check_ins_company_cycle_idx").on(table.companyId, table.cycleId),
 ]);
 
+export const checkInReviews = pgTable("check_in_reviews", {
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  reviewerId: text("reviewer_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  checkInId: uuid("check_in_id").notNull().references(() => krCheckIns.id, { onDelete: "cascade" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("check_in_reviews_scope_idx").on(table.companyId, table.reviewerId, table.checkInId),
+]);
+
 export const goalComments = pgTable("goal_comments", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),

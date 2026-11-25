@@ -2,7 +2,7 @@ import { and, eq, isNull, notInArray, or, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { contextOr401, errorResponse, isResponse, isUuid, readJson } from "@/server/api-utils";
 import { getDb } from "@/server/db";
-import { createNotifications, deliverNotificationEmails, type NotificationEntry } from "@/server/notifications";
+import { checkInRequestKey, createNotifications, deliverNotificationEmails, type NotificationEntry } from "@/server/notifications";
 import { canRequestCheckIn, canViewObjective, loadObjectiveAccessFacts, loadOrgChart, viewerFromChart, viewerFromContext } from "@/server/org-access";
 import { keyResults, objectives, okrCycles, user } from "@/server/schema";
 
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       entityType: keyResult ? "key_result" : "objective", entityId: keyResult?.id ?? goal.id,
       title: `${actorName} asked for a check-in on ${title}`,
       body: message || "Please post an update with your latest value and confidence.",
-      dedupKey: `check_in_request:${keyResult?.id ?? goal.id}:${recipientId}:${new Date().toISOString().slice(0, 10)}`,
+      dedupKey: checkInRequestKey(keyResult?.id ?? goal.id, recipientId),
     };
   }
 

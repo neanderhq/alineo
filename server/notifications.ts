@@ -23,6 +23,10 @@ export interface NotificationEntry {
   dedupKey: string;
 }
 
+export function checkInRequestKey(entityId: string, recipientId: string, now = new Date()) {
+  return `check_in_request:${entityId}:${recipientId}:${now.toISOString().slice(0, 10)}`;
+}
+
 export function goalLink(objectiveId: string | null) {
   return objectiveId ? `/dashboard/goals?goal=${objectiveId}` : "/dashboard/goals";
 }
