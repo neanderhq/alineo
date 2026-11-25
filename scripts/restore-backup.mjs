@@ -802,6 +802,10 @@ try {
   }
   console.log(`✓ Restored ${auditLogsRestored} Audit Trail entries`);
 
+  // Receipts are local retry state. A portable restore starts a new submission session.
+  if (backup.company?.id) {
+    await client.query("DELETE FROM check_in_batch_receipts WHERE company_id = $1", [backup.company.id]);
+  }
   await client.query("COMMIT");
 
   // Save generated secure credentials manifest to a protected local file

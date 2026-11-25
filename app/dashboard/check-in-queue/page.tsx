@@ -11,6 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { CheckInQueueItem } from "@/server/check-in-queue";
 
 export default function CheckInQueuePage() {
+  const { workspace } = useWorkspace();
+  return workspace && <CheckInQueue key={workspace.company.id} />;
+}
+
+function CheckInQueue() {
   const { workspace, selectedOpenCycle, canManage } = useWorkspace();
   const [selectedCycle, setSelectedCycle] = useState("");
   const [items, setItems] = useState<CheckInQueueItem[]>([]);
@@ -77,7 +82,7 @@ export default function CheckInQueuePage() {
   }
 
   const groups = Map.groupBy(items, item => item.ownerId);
-  return <main className="space-y-6">
+  return <div className="space-y-6">
     <header>
       <h1 className="text-3xl lg:text-4xl">Check-in queue</h1>
       <p className="mt-1 text-sm text-muted-foreground">Review key results that need attention from your direct reports.</p>
@@ -127,5 +132,5 @@ export default function CheckInQueuePage() {
         </DialogFooter>
       </DialogContent>}
     </Dialog>
-  </main>;
+  </div>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Archive,
@@ -466,7 +467,8 @@ export default function GoalsPage() {
           <h1 className="text-3xl lg:text-4xl">Goals</h1>
           <p className="mt-1 text-sm text-muted-foreground">Goals and key results for the selected cycle, aligned from company down to individuals.</p>
         </div>
-        <div className="flex items-center gap-2" role="group" aria-label="Goal view">
+        <div className="flex shrink-0 flex-wrap items-center gap-2" role="group" aria-label="Goal actions and view">
+          <Button asChild variant="outline"><Link href="/dashboard/check-in-batch">Batch check-ins</Link></Button>
           <Button variant={view === "list" ? "default" : "outline"} size="icon" aria-pressed={view === "list"} aria-label="List view" title="List view" onClick={() => setView("list")}>
             <List />
           </Button>

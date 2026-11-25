@@ -15,6 +15,9 @@ export async function refreshObjectiveProgress(
   objectiveId: string,
   companyId: string,
 ) {
+  // Serialize rollup reads after concurrent check-ins on different results of this goal.
+  await transaction.select({ id: objectives.id }).from(objectives)
+    .where(and(eq(objectives.id, objectiveId), eq(objectives.companyId, companyId))).for("no key update");
   const rows = await transaction.select({ progress: keyResults.progress })
     .from(keyResults)
     .where(and(

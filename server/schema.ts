@@ -252,6 +252,16 @@ export const reportViews = pgTable("report_views", {
   uniqueIndex("report_views_owner_name_idx").on(table.companyId, table.ownerId, sql`lower(${table.name})`),
 ]);
 
+export const checkInBatchReceipts = pgTable("check_in_batch_receipts", {
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  actorId: text("actor_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  requestId: uuid("request_id").notNull(),
+  digest: varchar("digest", { length: 64 }).notNull(),
+  count: integer("count").notNull(),
+}, (table) => [
+  uniqueIndex("check_in_batch_receipts_scope_idx").on(table.companyId, table.actorId, table.requestId),
+]);
+
 export const goalComments = pgTable("goal_comments", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
