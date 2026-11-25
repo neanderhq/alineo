@@ -6,7 +6,9 @@ description: |
 
   Alineo is an OKR workspace with company, team and individual objectives. Set quarterly or custom cycles, align goals, track numeric, percentage, currency and binary key results, and keep an effective-dated check-in history with notes and blockers.
 
-  Admin, Manager and Member roles control access alongside team and restricted-goal permissions. Explore fictional goals, delegated editors, reports, in-app notifications, CSV tools and archive/restore behavior. PostgreSQL migrations and generated demo credentials are included. Email delivery and scheduled reminder execution require your own operator configuration; no provider account or live workspace backup is included. Backup recovery is an explicit operator command, not an automatic startup task.
+  Managers can find overdue and at-risk key results for their direct reports, acknowledge the current at-risk check-in and request an update in the app. Members can save private report filters and export data they have access to. Contributors can preview and post up to 20 check-ins together in one open cycle.
+
+  Admin, Manager and Member roles control access alongside team and restricted-goal permissions. Explore these workflows with fictional staff and goals, CSV tools, cycle carry-forward and archive/restore. PostgreSQL migrations and generated demo credentials are included. Optional email delivery and scheduled reminders require operator configuration. Workspace backup recovery runs as an explicit operator command.
 category: Strategy & OKRs
 best_for: Teams aligning company priorities, individual goals and regular check-ins
 features:
@@ -15,17 +17,21 @@ features:
   - Four metric types and increasing or decreasing targets
   - Effective-dated check-ins, corrections, notes and blockers
   - Admin, Manager and Member roles with restricted-goal access
-  - Reports, CSV tools, in-app notifications and archive/restore
+  - Direct-report check-in queue with review and in-app requests
+  - Private saved report views and permission-filtered CSV exports
+  - Batch check-ins with preview and a single confirmation
+  - CSV import, cycle carry-forward and archive/restore
 included:
   - Alineo goals and team workspace
+  - Manager check-in queue, saved report views and batch check-ins
   - PostgreSQL migrations and session authentication
   - Fictional staff, cycle, objectives and key-result history
   - Operator backup/recovery tools and configuration guide
 thumbnail: .neander/thumbnail.png
 screenshots:
-  - .neander/screenshots/goals.png
-  - .neander/screenshots/people.png
-  - .neander/screenshots/activity.png
+  - .neander/screenshots/check-in-queue.png
+  - .neander/screenshots/saved-report-view.png
+  - .neander/screenshots/batch-check-ins.png
 commands:
   install: [pnpm, install, --frozen-lockfile]
   check: [pnpm, run, check]
