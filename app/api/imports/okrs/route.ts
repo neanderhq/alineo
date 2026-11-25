@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { contextOr401, isResponse, readJson } from "@/server/api-utils";
+import { contextOr401, errorResponse, isResponse, readJson } from "@/server/api-utils";
 import { getDb } from "@/server/db";
 import { deliverNotificationEmails, notifyNewOwners } from "@/server/notifications";
 import { validateOkrCsv } from "@/server/okr-import";
@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   const context = await contextOr401(request);
   if (isResponse(context)) return context;
+  if (context.role !== "admin") return errorResponse("Only admins can import OKRs.", 403);
   const body = await readJson(request);
   const csv = typeof body?.csv === "string" ? body.csv : "";
   const actorId = context.session.user.id;

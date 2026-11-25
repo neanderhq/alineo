@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +112,7 @@ export function GoalSheet({
   cycle,
   objective,
   onClose,
+  returnFocus,
   onAddKeyResult,
   onEditKeyResult,
 }: {
@@ -119,6 +120,7 @@ export function GoalSheet({
   /** Goal being edited; null creates a new goal in `cycle`. */
   objective: Objective | null;
   onClose: () => void;
+  returnFocus?: HTMLElement | null;
   onAddKeyResult: (objective: Objective) => void;
   onEditKeyResult: (objective: Objective, keyResult: KeyResult) => void;
 }) {
@@ -139,6 +141,9 @@ export function GoalSheet({
   });
   const [openSections, setOpenSections] = useState({ basics: true, privacy: isCreate, keyResults: false, comments: false });
   const [error, setError] = useState<string | null>(null);
+  const [invalidField, setInvalidField] = useState<"title" | "team" | null>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const teamTrigger = useRef<HTMLButtonElement>(null);
   const [saving, setSaving] = useState(false);
   const [reloadAfterConflict, setReloadAfterConflict] = useState(false);
   const [newAccessUserId, setNewAccessUserId] = useState("");
@@ -151,6 +156,12 @@ export function GoalSheet({
       setReloadAfterConflict(false);
     }
   }, [objective?.version]);
+
+  useEffect(() => {
+    if (!openSections.basics) return;
+    if (invalidField === "title") titleInput.current?.focus();
+    if (invalidField === "team") teamTrigger.current?.focus();
+  }, [invalidField, openSections.basics]);
 
   const members = useMemo(() => (workspace?.members ?? []).filter((member) => member.isActive), [workspace?.members]);
   const memberById = useMemo(() => new Map((workspace?.members ?? []).map((member) => [member.id, member])), [workspace?.members]);
@@ -175,6 +186,10 @@ export function GoalSheet({
   );
 
   function update<K extends keyof GoalDraft>(key: K, value: GoalDraft[K]) {
+    if (key === "title" && invalidField === "title" || (key === "teamId" || key === "level" || key === "visibility") && invalidField === "team") {
+      setInvalidField(null);
+      setError(null);
+    }
     setDraft((previous) => ({ ...previous, [key]: value }));
   }
 
@@ -225,12 +240,17 @@ export function GoalSheet({
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setInvalidField(null);
     if (!draft.title.trim()) {
+      setInvalidField("title");
+      titleInput.current?.focus();
       setOpenSections((previous) => ({ ...previous, basics: true }));
       setError("Give the goal a title.");
       return;
     }
     if ((draft.level === "team" || draft.visibility === "team") && nullable(draft.teamId) === null) {
+      setInvalidField("team");
+      teamTrigger.current?.focus();
       setOpenSections((previous) => ({ ...previous, basics: true }));
       setError(draft.level === "team" ? "Team goals need a team. Choose one under Basics." : "Choose a team under Basics before limiting privacy to that team.");
       return;
@@ -266,6 +286,16 @@ export function GoalSheet({
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
+        onOpenAutoFocus={(event) => {
+          if (!titleInput.current || titleInput.current.disabled) return;
+          event.preventDefault();
+          titleInput.current.focus();
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!returnFocus?.isConnected) return;
+          event.preventDefault();
+          returnFocus.focus();
+        }}
         className="top-0 right-0 left-auto flex h-dvh max-h-dvh w-full max-w-xl translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-y-0 border-r-0 p-0 sm:max-w-xl data-[state=closed]:slide-out-to-right data-[state=closed]:zoom-out-100 data-[state=open]:slide-in-from-right data-[state=open]:zoom-in-100"
       >
         <DialogHeader className="border-b px-6 py-5 text-left">
@@ -288,7 +318,7 @@ export function GoalSheet({
             >
               <Field>
                 <FieldLabel htmlFor="goal-title">Title</FieldLabel>
-                <Input id="goal-title" required maxLength={240} value={draft.title} onChange={(event) => update("title", event.target.value)} disabled={!canEditContent} />
+                <Input ref={titleInput} id="goal-title" aria-invalid={invalidField === "title" || undefined} aria-describedby={invalidField === "title" ? "goal-save-error" : undefined} required maxLength={240} value={draft.title} onChange={(event) => update("title", event.target.value)} disabled={!canEditContent} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="goal-description">Description</FieldLabel>
@@ -309,7 +339,7 @@ export function GoalSheet({
                 <Field>
                   <FieldLabel htmlFor="goal-team">Team</FieldLabel>
                   <Select value={draft.teamId} onValueChange={(value) => update("teamId", value)} disabled={!canEditContent}>
-                    <SelectTrigger id="goal-team" className="w-full"><SelectValue placeholder="No team" /></SelectTrigger>
+                    <SelectTrigger ref={teamTrigger} id="goal-team" aria-invalid={invalidField === "team" || undefined} aria-describedby={invalidField === "team" ? "goal-save-error" : undefined} className="w-full"><SelectValue placeholder="No team" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>No team</SelectItem>
                       {teams.map((team) => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
@@ -517,7 +547,7 @@ export function GoalSheet({
             {error && (
               <Alert variant="destructive" role="alert">
                 <AlertTitle>Goal not saved</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription id="goal-save-error">{error}</AlertDescription>
               </Alert>
             )}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

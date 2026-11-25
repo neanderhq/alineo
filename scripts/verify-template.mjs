@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium, request } from 'playwright';
 import pg from 'pg';
 import { verifyRecovery } from './verify-recovery.mjs';
+import { verifyCoreQuality } from './verify-core-quality.mjs';
 const exec=promisify(execFile);
 const COMPANY='a11e0000-0000-4000-8000-000000000001', ROOT='c11e0000-0000-4000-8000-000000000001', PRIVATE='c11e0000-0000-4000-8000-000000000003', KR='d11e0000-0000-4000-8000-000000000004';
 async function run(command,args,options={}) {
@@ -61,6 +62,7 @@ async function main(){
     assert.equal(await page.getByRole('table',{name:'Average progress by cycle',exact:true}).count(),1,'Chart data remains available to assistive technology');
     const mobileLayout=await page.evaluate(()=>({width:window.innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].map(e=>({tag:e.tagName,classes:e.getAttribute('class'),right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width})).filter(e=>e.right>window.innerWidth+1).slice(-20)}));
     assert.ok(mobileLayout.scrollWidth<=mobileLayout.width+1,'Mobile dashboard has no horizontal page overflow: '+JSON.stringify(mobileLayout));
+    await verifyCoreQuality({ page, origin: origin.origin, admin, member, workspace: await json(await admin.get('/api/workspace')) });
     await context.close();await browser.close();browser=undefined;
     const workspace=await json(await admin.get('/api/workspace')),goal=workspace.cycles.flatMap(c=>c.objectives).find(o=>o.id===ROOT),edited='Template edit '+randomUUID().slice(0,8);
     await json(await admin.patch('/api/objectives/'+ROOT,{data:{title:edited,version:goal.version}}));await run('pnpm',['db:seed']);await exec('docker',['restart',name],{timeout:60000});await ready(origin.origin);assert.equal((await json(await admin.get('/api/workspace'))).cycles.flatMap(c=>c.objectives).find(o=>o.id===ROOT).title,edited);

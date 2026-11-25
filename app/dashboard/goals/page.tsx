@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -66,8 +66,10 @@ const tabLabels: Record<GoalTab, string> = {
   company: "Company Goals",
 };
 
-type SheetState = { objective: Objective | null } | null;
+type SheetState = { objective: Objective | null; opener?: HTMLElement } | null;
 type KeyResultDialogState = { objective: Objective; keyResult: KeyResult | null } | null;
+
+const rowIndent = "pl-[min(var(--row-indent),1rem)] md:pl-[var(--row-indent)]";
 
 function metricValue(value: string) {
   return Number(value).toLocaleString();
@@ -77,8 +79,8 @@ function ProgressCell({ value, label }: { value: number | null; label: string })
   if (value === null) return <span className="text-sm text-muted-foreground">No KRs</span>;
   return (
     <div className="flex items-center gap-2">
-      <Progress value={value} tone={progressTone(value)} className="w-24" aria-label={label} />
-      <span className="text-xs font-medium tabular-nums">{Number(value.toFixed(2))}%</span>
+      <Progress value={value} tone={progressTone(value)} className="hidden w-24 md:block" aria-label={label} />
+      <span className="text-xs font-medium tabular-nums" aria-label={label}>{Number(value.toFixed(2))}%</span>
     </div>
   );
 }
@@ -93,6 +95,7 @@ export default function GoalsPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const createGoalButton = useRef<HTMLButtonElement>(null);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [krDialog, setKrDialog] = useState<KeyResultDialogState>(null);
   const [reviewTarget, setReviewTarget] = useState<Objective | null>(null);
@@ -100,7 +103,7 @@ export default function GoalsPage() {
   const [archiveTarget, setArchiveTarget] = useState<Objective | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<{ id: string; title: string } | null>(null);
   const [restoreListOpen, setRestoreListOpen] = useState(false);
-  const [checkIn, setCheckIn] = useState<{ keyResultId: string; correcting: CheckInEntry | null } | null>(null);
+  const [checkIn, setCheckIn] = useState<{ keyResultId: string; correcting: CheckInEntry | null; opener: HTMLElement | null } | null>(null);
   const [historyKrId, setHistoryKrId] = useState<string | null>(null);
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
 
@@ -218,8 +221,8 @@ export default function GoalsPage() {
     });
   }
 
-  function openCheckIn(keyResult: KeyResult, correcting: CheckInEntry | null = null) {
-    setCheckIn({ keyResultId: keyResult.id, correcting });
+  function openCheckIn(keyResult: KeyResult, opener: HTMLElement | null, correcting: CheckInEntry | null = null) {
+    setCheckIn({ keyResultId: keyResult.id, correcting, opener });
   }
 
   async function approval(objective: Objective, action: "submit" | "approve" | "request_changes", note = "") {
@@ -277,10 +280,10 @@ export default function GoalsPage() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${objective.title}`}><MoreVertical /></Button>
+          <Button id={`goal-actions-${objective.id}`} variant="ghost" size="icon-sm" aria-label={`Actions for ${objective.title}`}><MoreVertical /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuItem onSelect={() => setSheet({ objective })}>
+          <DropdownMenuItem onSelect={() => setSheet({ objective, opener: document.getElementById(`goal-actions-${objective.id}`) ?? undefined })}>
             <Pencil /> {writable && objective.canEdit ? "Edit" : "View details"}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={!writable || !objective.canEdit} onSelect={() => setKrDialog({ objective, keyResult: null })}>
@@ -335,28 +338,28 @@ export default function GoalsPage() {
     return (
       <TableRow key={`kr-${keyResult.id}`} className="bg-muted/20">
         <TableCell className="whitespace-normal">
-          <div className="flex items-start gap-2" style={{ paddingLeft: `${depth * 1.5 + 1.75}rem` }}>
+          <div className={cn("flex items-start gap-2", rowIndent)} style={{ "--row-indent": `${depth * 1.5 + 1.75}rem` } as CSSProperties}>
             <Target aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
-              <p className="text-sm">{keyResult.title}</p>
+              <p className="text-sm [overflow-wrap:anywhere]">{keyResult.title}</p>
               <p className="text-xs text-muted-foreground tabular-nums">
                 {metricValue(keyResult.current)} of {metricValue(keyResult.target)} {keyResult.unit} · baseline {metricValue(keyResult.baseline)}
               </p>
             </div>
           </div>
         </TableCell>
-        <TableCell>{keyResult.owner ? <PersonCell name={keyResult.owner.name} detail={keyResult.owner.jobTitle} /> : <span className="text-muted-foreground">—</span>}</TableCell>
+        <TableCell className="hidden md:table-cell">{keyResult.owner ? <PersonCell name={keyResult.owner.name} detail={keyResult.owner.jobTitle} /> : <span className="text-muted-foreground">—</span>}</TableCell>
         <TableCell><ProgressCell value={progress} label={`${keyResult.title} progress`} /></TableCell>
-        <TableCell><span className="text-xs text-muted-foreground">Key result</span></TableCell>
-        <TableCell className="tabular-nums">{formatDate(keyResult.dueDate)}</TableCell>
-        <TableCell className="tabular-nums">{formatDate(keyResult.updatedAt)}</TableCell>
+        <TableCell className="hidden md:table-cell"><span className="text-xs text-muted-foreground">Key result</span></TableCell>
+        <TableCell className="hidden tabular-nums md:table-cell">{formatDate(keyResult.dueDate)}</TableCell>
+        <TableCell className="hidden tabular-nums md:table-cell">{formatDate(keyResult.updatedAt)}</TableCell>
         <TableCell className="text-right">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={`Actions for key result ${keyResult.title}`}><MoreHorizontal /></Button>
+              <Button id={`key-result-actions-${keyResult.id}`} variant="ghost" size="icon-sm" aria-label={`Actions for key result ${keyResult.title}`}><MoreHorizontal /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={!checkInOpen || !keyResult.canCheckIn} onSelect={() => openCheckIn(keyResult)}>
+              <DropdownMenuItem disabled={!checkInOpen || !keyResult.canCheckIn} onSelect={() => openCheckIn(keyResult, document.getElementById(`key-result-actions-${keyResult.id}`))}>
                 <CheckCircle2 /> Check in
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setHistoryKrId(keyResult.id)}>
@@ -393,7 +396,7 @@ export default function GoalsPage() {
       <Fragment key={objective.id}>
         <TableRow>
           <TableCell className="whitespace-normal">
-            <div className="flex items-start gap-2" style={{ paddingLeft: `${depth * 1.5}rem` }}>
+            <div className={cn("flex items-start gap-2", rowIndent)} style={{ "--row-indent": `${depth * 1.5}rem` } as CSSProperties}>
               {expandable ? (
                 <Button
                   variant="ghost"
@@ -412,8 +415,8 @@ export default function GoalsPage() {
               <div className="min-w-0">
                 <button
                   type="button"
-                  className="text-left text-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                  onClick={() => setSheet({ objective })}
+                  className="text-left text-sm font-semibold [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                  onClick={(event) => setSheet({ objective, opener: event.currentTarget })}
                 >
                   {objective.title}
                 </button>
@@ -424,22 +427,25 @@ export default function GoalsPage() {
                   {objective.parentRestricted && <> · aligned to a <span className="italic">Private goal</span></>}
                   {objective.copiedFromObjectiveId && <> · carried forward</>}
                 </p>
+                <p className="text-xs text-muted-foreground md:hidden">
+                  {statusLabels[objective.status]}{objective.owner && <> · {objective.owner.name}</>}
+                </p>
               </div>
             </div>
           </TableCell>
-          <TableCell>
+          <TableCell className="hidden md:table-cell">
             {objective.owner ? <PersonCell name={objective.owner.name} detail={objective.owner.jobTitle} /> : <span className="text-muted-foreground">Unassigned</span>}
           </TableCell>
           <TableCell><ProgressCell value={progress} label={`${objective.title} progress`} /></TableCell>
-          <TableCell>
+          <TableCell className="hidden md:table-cell">
             <div className="flex flex-wrap gap-1">
               <Badge variant={objective.status === "active" ? "default" : objective.status === "cancelled" ? "destructive" : "outline"}>{statusLabels[objective.status]}</Badge>
               {objective.archivedAt && <Badge variant="outline">Archived</Badge>}
               <ApprovalBadge objective={objective} />
             </div>
           </TableCell>
-          <TableCell className="tabular-nums">{formatDate(objective.dueDate)}</TableCell>
-          <TableCell className="tabular-nums">{formatDate(objective.updatedAt)}</TableCell>
+          <TableCell className="hidden tabular-nums md:table-cell">{formatDate(objective.dueDate)}</TableCell>
+          <TableCell className="hidden tabular-nums md:table-cell">{formatDate(objective.updatedAt)}</TableCell>
           <TableCell className="text-right">{goalActions(objective)}</TableCell>
         </TableRow>
         {isExpanded && objective.keyResults.map((keyResult) => renderKeyResultRow(objective, keyResult, depth))}
@@ -470,8 +476,6 @@ export default function GoalsPage() {
         </div>
       </header>
 
-      <ImportExportPanel cycleId={selectedCycle?.id} />
-
       <Tabs value={tab} onValueChange={(value) => setTab(value as GoalTab)}>
         <div className="overflow-x-auto border-b">
           <TabsList variant="line" aria-label="Goal views">
@@ -495,7 +499,7 @@ export default function GoalsPage() {
                 <ArchiveRestore aria-hidden="true" /> Restore archived goal
               </Button>
             )}
-            <Button disabled={Boolean(createDisabledReason)} title={createDisabledReason} onClick={() => setSheet({ objective: null })}>
+            <Button disabled={Boolean(createDisabledReason)} title={createDisabledReason} ref={createGoalButton} onClick={(event) => setSheet({ objective: null, opener: event.currentTarget })}>
               <Plus aria-hidden="true" /> Create goal
             </Button>
             <DropdownMenu>
@@ -571,15 +575,15 @@ export default function GoalsPage() {
         )}
 
         <div className="rounded-xl border bg-card">
-          <Table className="min-w-[60rem]">
+          <Table className="md:min-w-[60rem]">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[34%]">Goal</TableHead>
-                <TableHead>Owner</TableHead>
+                <TableHead className="md:w-[34%]">Goal</TableHead>
+                <TableHead className="hidden md:table-cell">Owner</TableHead>
                 <TableHead>Progress</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Due date</TableHead>
-                <TableHead>Updated</TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
+                <TableHead className="hidden md:table-cell">Due date</TableHead>
+                <TableHead className="hidden md:table-cell">Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -616,12 +620,15 @@ export default function GoalsPage() {
         </nav>
       </section>
 
+      <ImportExportPanel cycleId={selectedCycle?.id} />
+
       {sheet && selectedCycle && (
         <GoalSheet
           key={sheet.objective?.id ?? "new"}
           cycle={selectedCycle}
           objective={sheet.objective ? sheetObjective ?? sheet.objective : null}
           onClose={() => setSheet(null)}
+          returnFocus={sheet.opener ?? createGoalButton.current}
           onAddKeyResult={(objective) => setKrDialog({ objective, keyResult: null })}
           onEditKeyResult={(objective, keyResult) => setKrDialog({ objective, keyResult })}
         />
@@ -726,7 +733,8 @@ export default function GoalsPage() {
         <KeyResultHistoryDialog
           keyResult={historyKr}
           canCorrect={checkInOpen && historyKr.canCheckIn}
-          onCorrect={(entry) => openCheckIn(historyKr, entry)}
+          onCorrect={(entry, opener) => openCheckIn(historyKr, opener, entry)}
+          returnFocus={document.getElementById(`key-result-actions-${historyKr.id}`)}
           onClose={() => setHistoryKrId(null)}
         />
       )}
@@ -738,6 +746,7 @@ export default function GoalsPage() {
           cycle={selectedCycle}
           correcting={checkIn.correcting}
           onClose={() => setCheckIn(null)}
+          returnFocus={checkIn.opener}
           onSaved={async (message) => {
             await loadWorkspace();
             setFeedback({ tone: "success", message });
