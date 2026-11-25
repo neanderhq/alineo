@@ -25,7 +25,7 @@ def main():
     require(project['lifecycle'] == 'published', 'This contract is for an existing published template')
     require(project['repositoryVisibility'] == 'public', 'Published template visibility metadata differs')
     require('MIT License' in (ROOT / 'LICENSE').read_text(), 'Preserve the existing MIT license')
-    require('* @sourabhagrawal' in (ROOT / '.github/CODEOWNERS').read_text(), 'Missing maintainer ownership')
+    require(not any(line.strip() and not line.lstrip().startswith('#') for line in (ROOT / '.github/CODEOWNERS').read_text().splitlines()), 'Automatic clone review assignments must remain disabled')
     require(not (ROOT / 'init').exists(), 'Unexpected startup loader')
     require(not (ROOT / '.vscode').exists(), 'Editor automation does not belong in this template')
     require((ROOT / 'postcss.config.mjs').read_text().strip() == 'export default { plugins: { "@tailwindcss/postcss": {} } };', 'Review PostCSS changes before adding executable configuration')
