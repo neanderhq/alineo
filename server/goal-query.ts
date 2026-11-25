@@ -19,6 +19,7 @@ export interface GoalQueryFilters {
   overdueOnly?: boolean;
   staleOnly?: boolean;
   includeArchived?: boolean;
+  omitArchivedCycles?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -118,7 +119,7 @@ export async function loadFilteredGoals(context: RequestContext, filters: GoalQu
   const database = getDb();
   const viewer = viewerFromContext(context);
   const cycles = await database.select().from(okrCycles)
-    .where(eq(okrCycles.companyId, context.companyId))
+    .where(and(eq(okrCycles.companyId, context.companyId), filters.omitArchivedCycles ? isNull(okrCycles.archivedAt) : undefined))
     .orderBy(desc(okrCycles.startDate));
   const selectedCycles = filters.cycleId ? cycles.filter((cycle) => cycle.id === filters.cycleId) : cycles;
 
@@ -182,7 +183,7 @@ export async function loadFilteredGoals(context: RequestContext, filters: GoalQu
     if (filters.overdueOnly && !(objective.dueDate && objective.dueDate < today && objective.status !== "completed" && objective.status !== "cancelled" && Number(objective.progress ?? 0) < 100)) return false;
     if (filters.staleOnly) {
       const results = resultsByObjective.get(objective.id) ?? [];
-      if (!results.length || !results.some((result) => result.lastCheckInAt && result.lastCheckInAt >= cutoff)) return false;
+      if (!results.length || !results.some((result) => !result.lastCheckInAt || result.lastCheckInAt < cutoff)) return false;
     }
     if (filters.confidence) {
       const results = resultsByObjective.get(objective.id) ?? [];

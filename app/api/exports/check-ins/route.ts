@@ -1,10 +1,13 @@
-import { contextOr401, isResponse } from "@/server/api-utils";
+import { contextOr401, errorResponse, isResponse } from "@/server/api-utils";
 import { csvCell } from "@/server/csv";
-import { loadFilteredGoals, parseGoalQueryFilters } from "@/server/goal-query";
+import { loadFilteredGoals } from "@/server/goal-query";
 import { krCheckIns } from "@/server/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { user } from "@/server/schema";
+
+import { InputError } from "@/server/objectives";
+import { reportRequestFilters } from "@/server/report-views";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +16,14 @@ const HEADERS = ["objective", "key_result", "author", "effective_date", "value",
 export async function GET(request: Request) {
   const context = await contextOr401();
   if (isResponse(context)) return context;
-  const filters = parseGoalQueryFilters(new URL(request.url).searchParams);
+  let selection;
+  try {
+    selection = await reportRequestFilters(context, request);
+  } catch (error) {
+    if (error instanceof InputError) return errorResponse(error.message, error.status);
+    throw error;
+  }
+  const { filters } = selection;
   const data = await loadFilteredGoals(context, filters);
   const objectiveIds = data.goals.map((goal) => goal.id);
   const checkIns = objectiveIds.length ? await getDb().select().from(krCheckIns)

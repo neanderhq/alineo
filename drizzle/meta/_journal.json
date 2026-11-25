@@ -22,6 +22,27 @@
       "when": 1794552818851,
       "tag": "0002_brainy_selene",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795602417356,
+      "tag": "0003_manager_check_in_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795602502045,
+      "tag": "0004_private_report_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795602726806,
+      "tag": "0005_check_in_batch_receipts",
+      "breakpoints": true
     }
   ]
 }

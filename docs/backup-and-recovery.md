@@ -19,6 +19,11 @@ editors, check-ins and linked corrections, comments, audit events, invitations
 and notifications. Preserve IDs, access fields and history; do not replace a full
 backup with hand-copied goal rows.
 
+Personal saved report views and queue review marks are stored in PostgreSQL
+and excluded from the portable workspace JSON. Use a database backup to retain
+them. The portable export includes every committed batch check-in in ordinary
+history. Restoring the workspace clears its batch retry receipts.
+
 Identity credentials are treated separately from business records. By default, the restore
 utility creates new high-entropy temporary credentials for affected accounts and
 writes a private credential manifest. It revokes affected users' sessions and

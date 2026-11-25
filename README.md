@@ -17,7 +17,12 @@ MIT-licensed app is independent of Betterworks and is not affiliated with it.
   server-side permissions.
 - Check-in history, confidence, notes, blockers, backdated updates and linked
   corrections; comments, mentions and in-app notifications.
-- Reporting, admin CSV imports, permission-filtered exports, cycle carry-forward and archive/restore.
+- A direct-report check-in queue with risk and cadence flags, private review
+  marks and in-app requests.
+- Private saved report filters and permission-filtered CSV exports.
+- Batch check-ins for up to 20 results in one open cycle, with a preview and
+  one confirmation.
+- Admin CSV imports, cycle carry-forward and archive/restore.
 - Admin JSON backup export and an explicit operator restore tool.
 
 Email delivery and automatic reminder scheduling require your own optional

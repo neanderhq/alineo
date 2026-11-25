@@ -39,6 +39,10 @@ export async function verifyRecovery({ backup, directory, sourceRoot, databaseUr
   try {
     await run(process.execPath,[join(sourceRoot,'.neander/migrate.mjs')],{cwd:sourceRoot,env});
     await restore(); let creds=JSON.parse(await readFile(manifest,'utf8')).credentials;
+    for (const table of ['check_in_reviews', 'report_views', 'check_in_batch_receipts']) {
+      const portableState = await db.query('SELECT count(*)::int AS count FROM ' + table);
+      check(portableState.rows[0].count === 0, 'Portable workspace export omits ' + table);
+    }
     check((await stat(manifest)).mode%0o1000===0o600,'Credential manifest is0600');
     check(new Set(creds.map(x=>x.temporaryPassword)).size===creds.length,'Unique generated temporary passwords');
     check(['objectiveAccess','keyResultEditors','invitations','notifications'].every(k=>backup[k].length>0),'Nonempty ACL/editor/invite/notification fixtures');

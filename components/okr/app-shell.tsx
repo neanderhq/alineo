@@ -11,6 +11,7 @@ import {
   History,
   Home,
   LogOut,
+  ListChecks,
   Menu,
   Target,
   TrendingUp,
@@ -38,6 +39,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "home", href: "/dashboard", label: "Home", icon: Home },
   { id: "goals", href: "/dashboard/goals", label: "Goals", icon: Target },
+  { id: "check-in-queue", href: "/dashboard/check-in-queue", label: "Check-in queue", icon: ListChecks, managersOnly: true },
   { id: "cycles", href: "/dashboard/cycles", label: "Cycles", icon: CalendarRange },
   { id: "reports", href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
   { id: "insights", href: "/dashboard/insights", label: "Insights", icon: TrendingUp },

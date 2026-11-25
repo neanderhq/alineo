@@ -1,7 +1,11 @@
-import { contextOr401, isResponse } from "@/server/api-utils";
+import { eq } from "drizzle-orm";
+import { contextOr401, errorResponse, isResponse } from "@/server/api-utils";
 import { csvCell } from "@/server/csv";
-import { loadFilteredGoals, parseGoalQueryFilters } from "@/server/goal-query";
+import { loadFilteredGoals } from "@/server/goal-query";
 import { okrCycles } from "@/server/schema";
+
+import { InputError } from "@/server/objectives";
+import { reportRequestFilters } from "@/server/report-views";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +17,17 @@ const HEADERS = [
 export async function GET(request: Request) {
   const context = await contextOr401();
   if (isResponse(context)) return context;
-  const filters = parseGoalQueryFilters(new URL(request.url).searchParams);
-  if (!filters.cycleId) {
+  let selection;
+  try {
+    selection = await reportRequestFilters(context, request);
+  } catch (error) {
+    if (error instanceof InputError) return errorResponse(error.message, error.status);
+    throw error;
+  }
+  const { filters } = selection;
+  if (!filters.cycleId && !selection.fromReports) {
     const [latest] = await (await import("@/server/db")).getDb().select({ id: okrCycles.id }).from(okrCycles)
-      .orderBy(okrCycles.startDate).limit(1);
+      .where(eq(okrCycles.companyId, context.companyId)).orderBy(okrCycles.startDate).limit(1);
     filters.cycleId = latest?.id;
   }
   const data = await loadFilteredGoals(context, filters);

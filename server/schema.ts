@@ -16,6 +16,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { ReportFilters } from "../lib/report-filters";
 import * as authSchema from "./auth-schema";
 
 export * from "./auth-schema";
@@ -230,6 +231,35 @@ export const krCheckIns = pgTable("kr_check_ins", {
 }, (table) => [
   index("kr_check_ins_key_result_effective_idx").on(table.keyResultId, table.effectiveDate, table.createdAt),
   index("kr_check_ins_company_cycle_idx").on(table.companyId, table.cycleId),
+]);
+
+export const checkInReviews = pgTable("check_in_reviews", {
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  reviewerId: text("reviewer_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  checkInId: uuid("check_in_id").notNull().references(() => krCheckIns.id, { onDelete: "cascade" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("check_in_reviews_scope_idx").on(table.companyId, table.reviewerId, table.checkInId),
+]);
+
+export const reportViews = pgTable("report_views", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 80 }).notNull(),
+  filters: jsonb("filters").$type<ReportFilters>().notNull(),
+}, (table) => [
+  uniqueIndex("report_views_owner_name_idx").on(table.companyId, table.ownerId, sql`lower(${table.name})`),
+]);
+
+export const checkInBatchReceipts = pgTable("check_in_batch_receipts", {
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  actorId: text("actor_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  requestId: uuid("request_id").notNull(),
+  digest: varchar("digest", { length: 64 }).notNull(),
+  count: integer("count").notNull(),
+}, (table) => [
+  uniqueIndex("check_in_batch_receipts_scope_idx").on(table.companyId, table.actorId, table.requestId),
 ]);
 
 export const goalComments = pgTable("goal_comments", {
