@@ -113,24 +113,26 @@ function CheckInQueue() {
       </Card>)}
     </>}
     <Dialog open={Boolean(selected)} onOpenChange={open => { if (!open) setSelected(null); }}>
-      {selected && <DialogContent className="max-h-[90dvh] overflow-y-auto" onCloseAutoFocus={event => {
+      <DialogContent className="max-h-[90dvh] overflow-y-auto" onCloseAutoFocus={event => {
         event.preventDefault();
         (opener.current?.isConnected ? opener.current : picker.current)?.focus();
       }}>
-        <DialogHeader>
-          <DialogTitle className="break-words">{selected.title}</DialogTitle>
-          <DialogDescription className="break-words">{selected.goalTitle} · {selected.ownerName}</DialogDescription>
-        </DialogHeader>
-        <p className="text-sm">{Number(selected.progress)}% complete · Last effective check-in {selected.lastEffectiveDate ?? "not yet posted"}</p>
-        <Button asChild variant="link" className="w-fit px-0"><Link href={`/dashboard/goals?goal=${selected.goalId}`}>Open goal</Link></Button>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        {message && <p role="status" className="text-sm">{message}</p>}
-        <DialogFooter>
-          <DialogClose asChild><Button variant="outline">Close</Button></DialogClose>
-          {selected.checkInId && <Button variant="secondary" disabled={busy || selected.reviewed} onClick={() => void act("review")}>{selected.reviewed ? "Reviewed" : "Mark reviewed"}</Button>}
-          <Button disabled={busy} onClick={() => void act("request")}>Request check-in</Button>
-        </DialogFooter>
-      </DialogContent>}
+        {selected && <>
+          <DialogHeader>
+            <DialogTitle className="break-words">{selected.title}</DialogTitle>
+            <DialogDescription className="break-words">{selected.goalTitle} · {selected.ownerName}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm">{Number(selected.progress)}% complete · Last effective check-in {selected.lastEffectiveDate ?? "not yet posted"}</p>
+          <Button asChild variant="link" className="w-fit px-0"><Link href={`/dashboard/goals?goal=${selected.goalId}`}>Open goal</Link></Button>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {message && <p role="status" className="text-sm">{message}</p>}
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Close</Button></DialogClose>
+            {selected.checkInId && <Button variant="secondary" disabled={busy || selected.reviewed} onClick={() => void act("review")}>{selected.reviewed ? "Reviewed" : "Mark reviewed"}</Button>}
+            <Button disabled={busy} onClick={() => void act("request")}>Request check-in</Button>
+          </DialogFooter>
+        </>}
+      </DialogContent>
     </Dialog>
   </div>;
 }

@@ -96,6 +96,15 @@ async function select(page, label, name) {
   await page.getByRole('option', { name, exact: true }).press('Enter');
 }
 
+async function waitFocused(locator, page, message) {
+  try {
+    await locator.and(page.locator(':focus')).waitFor({ timeout: 3000 });
+  } catch {
+    const active = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 250));
+    assert.fail(message + ' – actual focus: ' + active);
+  }
+}
+
 async function phoneFits(page) {
   const dimensions = await page.evaluate(() => [innerWidth, document.documentElement.scrollWidth]);
   assert.equal(dimensions[0], 375);
@@ -142,7 +151,7 @@ async function verifyBrowser({ browser, origin, manager, member, cycle, first, b
       await dialog.getByText('Check-in reviewed.', { exact: true }).waitFor();
       await page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'hidden' });
-      assert.ok(await review.evaluate(element => element === document.activeElement), 'Queue Escape returns focus to the reviewed row');
+      await waitFocused(review, page, 'Queue Escape returns focus to the reviewed row');
     } finally {
       await managerContext.close();
     }
@@ -163,7 +172,7 @@ async function verifyBrowser({ browser, origin, manager, member, cycle, first, b
       await capture(page, prefix + 'saved-view');
       await page.keyboard.press('Escape');
       await saveDialog.waitFor({ state: 'hidden' });
-      assert.ok(await save.evaluate(element => element === document.activeElement), 'Report Escape restores the save trigger');
+      await waitFocused(save, page, 'Report Escape restores the save trigger');
       await save.press('Enter');
       await saveDialog.getByLabel('View name', { exact: true }).fill(viewName);
       await saveDialog.getByRole('button', { name: 'Save view', exact: true }).press('Enter');
@@ -207,7 +216,7 @@ async function verifyBrowser({ browser, origin, manager, member, cycle, first, b
       }
       await page.keyboard.press('Escape');
       await batchDialog.waitFor({ state: 'hidden' });
-      assert.ok(await previewButton.evaluate(element => element === document.activeElement), 'Cancel returns to the preview trigger');
+      await waitFocused(previewButton, page, 'Cancel returns to the preview trigger');
 
       const beforeBinary = await history(member, binary);
       const confirm = batchDialog.getByRole('button', { name: 'Confirm check-ins', exact: true });
@@ -236,6 +245,11 @@ async function verifyBrowser({ browser, origin, manager, member, cycle, first, b
         await confirm.press('Enter');
         await batchDialog.getByRole('alert').getByText('Could not confirm the result. Retry this same submission.', { exact: true }).waitFor();
         await page.unroute('**/api/check-in-batches', loseResponse);
+        await page.keyboard.press('Escape');
+        await batchDialog.waitFor({ state: 'hidden' });
+        const resume = page.getByRole('button', { name: 'Resume confirmation', exact: true });
+        await waitFocused(resume, page, 'Pending confirmation can be dismissed safely');
+        await resume.press('Enter');
         await batchDialog.getByRole('button', { name: 'Retry confirmation', exact: true }).press('Enter');
       } else {
         await confirm.press('Enter');
