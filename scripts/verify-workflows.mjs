@@ -273,7 +273,7 @@ export async function verifyWorkflows({ browser, origin, admin, manager, member,
   const first = await createResult(member, goal.id, title.first);
   const binary = await createResult(member, goal.id, title.binary, { metricType: 'binary', target: 1, ownerId: null });
   const healthy = await createResult(member, goal.id, title.healthy);
-  const hidden = await createGoal(admin, cycle.id, title.restricted, { visibility: 'restricted' });
+  const hidden = await createGoal(admin, cycle.id, title.restricted, { visibility: 'restricted', viewerIds: [memberId] });
   await createResult(admin, hidden.id, 'Prepare coverage proposal');
   const adminGoal = await createGoal(admin, cycle.id, 'Check central controls');
   const unwritable = await createResult(admin, adminGoal.id, 'Validate central controls');
@@ -342,6 +342,12 @@ export async function verifyWorkflows({ browser, origin, admin, manager, member,
   const replaced = (await json(await member.patch(editView(view), { data: { filters: { ...filters, q: '' } } }))).view;
   assert.equal(replaced.filters.q, '');
   assert.equal(replaced.filters.cycleId, cycle.id);
+  const replayedQuery = new URLSearchParams({ ...replaced.filters, report: 'true' });
+  const sharedReport = await json(await member.get('/api/reports?' + replayedQuery));
+  assert.ok(sharedReport.goals.some(row => row.id === hidden.id), 'The original saved view can display a granted goal');
+  const hiddenNow = await json(await admin.get('/api/workspace'));
+  const restricted = hiddenNow.cycles.find(item => item.id === cycle.id).objectives.find(item => item.id === hidden.id);
+  await json(await admin.patch('/api/objectives/' + hidden.id, { data: { version: restricted.version, viewerIds: [] } }));
   const staleView = (await json(await member.post(api.views, { data: {
     name: 'Archived readiness period', filters: { ...filters, cycleId: secondCycle.id, q: '' },
   } }), 201)).view;
@@ -359,6 +365,13 @@ export async function verifyWorkflows({ browser, origin, admin, manager, member,
   assert.equal((await json(await commit(member, otherCycle), 404)).rows[0].id, siblingResult.id);
   const unauthorized = batchData(cycle, [pre.rows[0], batchRow(unwritable, 8)]);
   assert.equal((await json(await commit(member, unauthorized), 403)).rows[0].id, unwritable.id);
+  const resultPath = '/api/key-results/' + unwritable.id;
+  const granted = await json(await admin.patch(resultPath, { data: { version: unwritable.version, editorIds: [memberId] } }));
+  const revokedBatch = batchData(cycle, [pre.rows[0], batchRow(granted.keyResult, 8)]);
+  await preview(member, revokedBatch);
+  await json(await admin.patch(resultPath, { data: { version: granted.keyResult.version, editorIds: [] } }));
+  assert.equal((await json(await commit(member, revokedBatch), 403)).rows[0].id, unwritable.id);
+  assert.equal((await history(admin, unwritable)).length, 1, 'An editor revoked after preview cannot write history');
   assert.equal((await commit(stranger, pre)).status(), 409);
   assert.equal((await commit(inactive, pre)).status(), 403);
   assert.equal((await commit(anonymous, pre)).status(), 401);
@@ -408,9 +421,10 @@ export async function verifyWorkflows({ browser, origin, admin, manager, member,
   assert.equal((await member.delete(editView(view))).status(), 204);
   assert.equal((await newLogin.get(editView(view))).status(), 404);
 
+  const closedBatch = batchData(secondCycle, [batchRow(siblingResult, 5)]);
+  await preview(member, closedBatch);
   const closed = await json(await admin.post(api.cycles + '/' + secondCycle.id + '/close', { data: { version: secondCycle.version } }));
   assert.equal(closed.cycle.status, 'closed');
-  const closedBatch = batchData(secondCycle, [batchRow(siblingResult, 5)]);
   assert.equal((await commit(member, closedBatch)).status(), 409);
   assert.equal((await preview(member, closedBatch, 403)).rows[0].id, siblingResult.id);
   assert.deepEqual((await json(await manager.get(queuePath(secondCycle)))).items, []);
